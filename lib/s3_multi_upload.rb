@@ -5,6 +5,8 @@ require 'base64'
 
 module S3_Multi_Upload
   class Upload
+    MAX_RETRIES = 10
+
     attr_accessor :options, :file, :queue, :mutex, :s3, :bucket, :object, :progress
 
     def initialize options
@@ -72,7 +74,19 @@ module S3_Multi_Upload
                   upload_parameters[:content_md5] = encoded_digest
                 end
 
-                upload.add_part upload_parameters
+                retries = 0
+                begin
+                  upload.add_part upload_parameters
+                rescue Net::ReadTimeout => e
+                  if retries < MAX_RETRIES
+                    mutex.synchronize do
+                      puts "#{e.class} on part #{index}, retrying (#{retries += 1} of #{MAX_RETRIES} attempts)"
+                    end
+                    retry
+                  else
+                    raise e
+                  end
+                end
 
                 if options[:progress_bar]
                   mutex.synchronize do
