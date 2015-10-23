@@ -77,7 +77,7 @@ module S3_Multi_Upload
                 retries = 0
                 begin
                   upload.add_part upload_parameters
-                rescue Net::ReadTimeout => e
+                rescue Net::ReadTimeout, Net::OpenTimeout => e
                   if retries < MAX_RETRIES
                     mutex.synchronize do
                       puts "#{e.class} on part #{index}, retrying (#{retries += 1} of #{MAX_RETRIES} attempts)"
